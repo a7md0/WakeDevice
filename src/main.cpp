@@ -57,6 +57,9 @@ void setupTasks() {
 #if defined(SCHEDULE_RESTART)
 	xTaskCreate(restartTask, "RESTART_TASK", 2048, NULL, tskIDLE_PRIORITY, NULL);
 #endif
+
+	xTaskCreatePinnedToCore(icmpTask, "ICMP_TASK", 4096, NULL, 6, &icmpTaskHandler, 1);
+	vTaskSuspend(icmpTaskHandler);
 }
 
 void wifiConnect() {
@@ -303,24 +306,9 @@ void wakeDeviceTask(void *pvParameters) {
 	Sprintln(status);
 
 	if (device->retrieveStatus == true) {
-		bool pingResult = false;
 		deviceIP.fromString(device->ip.c_str());
 
-		for (uint8_t i = 0; i < PING_RETRY_NUM; i++) {
-			Sprint("> ping ");
-			Sprintln(deviceIP.toString());
-
-			pingResult = Ping.ping(deviceIP);
-
-			Sprintf(">> %d\n", pingResult);
-
-			if (pingResult == true || i == PING_RETRY_NUM - 1)
-				break;
-
-			vTaskDelay(pdMS_TO_TICKS(PING_BETWEEN_DELAY_MS));
-		}
-
-		addDeviceStatus(device->mac, device->channel, pingResult);
+		addIcmpRequst(device->mac, deviceIP, device->channel, PING_RETRY_NUM);
 	}
 
 	delete pvParameters;
@@ -332,15 +320,7 @@ void deviceStatusTask(void *pvParameters) {
 	IPAddress deviceIP;
 
 	deviceIP.fromString(status->ip.c_str());
-
-	Sprint("> ping ");
-	Sprintln(deviceIP.toString());
-
-	bool pingResult = Ping.ping(deviceIP);
-
-	Sprintf(">> %d\n", pingResult);
-
-	addDeviceStatus(status->mac, status->channel, pingResult);
+	addIcmpRequst(status->mac, deviceIP, status->channel, 1);
 
 	delete pvParameters;
 	vTaskDelete(NULL);
@@ -376,6 +356,76 @@ void restartTask(void *pvParameters) {
 }
 #endif
 
+void icmpTask(void *pvParameters) {
+	for (;;) {
+		bool queueIsEmpty = true;
+
+		if (!WiFi.isConnected()) {
+			vTaskDelay(pdMS_TO_TICKS(FAILED_DELAY_MS));
+			continue;
+		}
+
+		for (uint8_t i = 0; i < icmpQueueSize; i++) {
+			if (icmpQueue[i].waiting == true && millis() >= icmpQueue[i].nextICMP) {
+				Sprint("> ping ");
+				Sprintln(icmpQueue[i].ip.toString());
+
+				bool pingResult = Ping.ping(icmpQueue[i].ip);
+
+				Sprintf(">> %d\n", pingResult);
+
+				icmpQueue[i].tries--;
+				icmpQueue[i].nextICMP = millis() + PING_BETWEEN_DELAY_MS;
+
+				if (pingResult == true || icmpQueue[i].tries == 0) {
+					icmpQueue[i].waiting = false;
+					addDeviceStatus(icmpQueue[i].mac, icmpQueue[i].topic, pingResult);
+				}
+			}
+
+			if (icmpQueue[i].waiting == true)
+				queueIsEmpty = false;
+		}
+
+		if (queueIsEmpty == true)
+			vTaskSuspend(NULL);
+		else
+			vTaskDelay(pdMS_TO_TICKS(10));
+	}
+}
+
+void addIcmpRequst(String &mac, IPAddress ip, String &topic, uint8_t maxTries) {
+	bool addedToQueue = false;
+
+	for (uint8_t i = 0; i < icmpQueueSize; i++) {
+		if (icmpQueue[i].waiting == true && icmpQueue[i].ip == ip) {
+			addedToQueue = true;
+			break;
+		}
+
+		if (icmpQueue[i].waiting == false) {
+			icmpQueue[i].waiting = true;
+
+			icmpQueue[i].mac = mac;
+			icmpQueue[i].ip = ip;
+
+			icmpQueue[i].topic = topic;
+
+			icmpQueue[i].tries = maxTries;
+
+			addedToQueue = true;
+			break;
+		}
+	}
+
+	if (addedToQueue)
+		vTaskResume(icmpTaskHandler);
+	else {
+		vTaskDelay(pdMS_TO_TICKS(FAILED_DELAY_MS));
+		addIcmpRequst(mac, ip, topic, maxTries);
+	}
+}
+
 void addDeviceStatus(String &mac, String &topic, bool status) {
 	bool addedToQueue = false;
 
@@ -406,7 +456,6 @@ void addDeviceStatus(String &mac, String &topic, bool status) {
 	if (!addedToQueue) {
 		vTaskDelay(pdMS_TO_TICKS(FAILED_DELAY_MS));
 		addDeviceStatus(mac, topic, status);
-		Sprintln("!addedToQueue");
 	}
 }
 

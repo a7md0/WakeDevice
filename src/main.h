@@ -85,6 +85,19 @@ struct statusStruct {
 	String ip;
 };
 
+struct icmpQueueStruct {
+	bool waiting = false;
+
+	String mac;
+	IPAddress ip;
+
+	String topic;
+
+	int8_t tries = 1;
+
+	unsigned long nextICMP = 0;
+};
+
 struct mqttMessageStruct {
 	bool waiting = false;
 
@@ -106,5 +119,11 @@ unsigned long nextShadowMillis = 0;
 const size_t mqttMessagesQueueSize = 12;
 uint8_t mqttMessagesQueueIndex = 0;
 mqttMessageStruct mqttMessagesQueue[mqttMessagesQueueSize];
+
+const size_t icmpQueueSize = 24;
+icmpQueueStruct icmpQueue[icmpQueueSize];
+
+TaskHandle_t icmpTaskHandler = NULL;
+
 
 #endif
