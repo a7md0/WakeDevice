@@ -308,7 +308,7 @@ void wakeDeviceTask(void *pvParameters) {
 	if (device->retrieveStatus == true) {
 		deviceIP.fromString(device->ip.c_str());
 
-		addIcmpRequst(device->mac, deviceIP, device->channel, PING_RETRY_NUM);
+		icmpRequstAdd(device->mac, deviceIP, device->channel, PING_RETRY_NUM);
 	}
 
 	delete pvParameters;
@@ -320,7 +320,7 @@ void deviceStatusTask(void *pvParameters) {
 	IPAddress deviceIP;
 
 	deviceIP.fromString(status->ip.c_str());
-	addIcmpRequst(status->mac, deviceIP, status->channel, 1);
+	icmpRequstAdd(status->mac, deviceIP, status->channel, 1);
 
 	delete pvParameters;
 	vTaskDelete(NULL);
@@ -394,7 +394,7 @@ void icmpTask(void *pvParameters) {
 	}
 }
 
-void addIcmpRequst(String &mac, IPAddress ip, String &topic, uint8_t maxTries) {
+void icmpRequstAdd(String &mac, IPAddress ip, String &topic, uint8_t maxTries) {
 	bool addedToQueue = false;
 
 	for (uint8_t i = 0; i < icmpQueueSize; i++) {
@@ -422,7 +422,7 @@ void addIcmpRequst(String &mac, IPAddress ip, String &topic, uint8_t maxTries) {
 		vTaskResume(icmpTaskHandler);
 	else {
 		vTaskDelay(pdMS_TO_TICKS(FAILED_DELAY_MS));
-		addIcmpRequst(mac, ip, topic, maxTries);
+		icmpRequstAdd(mac, ip, topic, maxTries);
 	}
 }
 
