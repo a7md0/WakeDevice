@@ -36,12 +36,17 @@ void messageReceived(String &topic, String &payload);
 void mqttMessageQueueProcess();
 void sendShadowData(void);
 
+void wakeDeviceTask(void *pvParameters);
+void deviceStatusTask(void *pvParameters);
+
 void ntpTask(void *pvParameters);
+
 #if defined(SCHEDULE_RESTART)
 void restartTask(void *pvParameters);
 #endif
-void wakeDeviceTask(void *pvParameters);
-void deviceStatusTask(void *pvParameters);
+
+void icmpTask(void *pvParameters) ;
+void icmpRequstAdd(String &mac, IPAddress ip, String &topic, uint8_t maxTries);
 
 void addDeviceStatus(String &mac, String &topic, bool status);
 
