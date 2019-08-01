@@ -52,7 +52,7 @@ void lwMQTTErr(lwmqtt_err_t reason);
 void lwMQTTErrConnection(lwmqtt_return_code_t reason);
 
 IPAddress getNetworkID(IPAddress ip, IPAddress subnet);
-uint8_t subnetCidr(IPAddress subnetMask);
+uint8_t subnetCIDR(IPAddress subnetMask);
 
 #ifdef ENABLE_LED
 extern void setupLED(uint8_t _ledPin);
