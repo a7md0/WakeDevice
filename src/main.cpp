@@ -36,7 +36,7 @@ void loop() {
 			if (millis() >= nextShadowMillis)
 				sendShadowData();
 
-			deviceStatusQueueSend();
+			mqttMessageQueueProcess();
 		} else {
 #ifdef ENABLE_LED
 #ifdef BLINK_LED
@@ -234,6 +234,29 @@ void messageReceived(String &topic, String &payload) {
 	}
 }
 
+void mqttMessageQueueProcess() {
+	if (mqttMessagesQueueIndex == mqttMessagesQueueSize)
+		mqttMessagesQueueIndex = 0;
+
+	if (mqttMessagesQueue[mqttMessagesQueueIndex].waiting == true && millis() >= mqttMessagesQueue[mqttMessagesQueueIndex].nextTry) {
+		String data = mqttMessagesQueue[mqttMessagesQueueIndex].payload;
+
+		Sprintf("[%s] Sending: ", mqttMessagesQueue[mqttMessagesQueueIndex].topic.c_str());
+		Sprintln(data.c_str());
+		Sprintln();
+
+		bool res = client.publish(mqttMessagesQueue[mqttMessagesQueueIndex].topic, data);
+		if (res)
+			mqttMessagesQueue[mqttMessagesQueueIndex].waiting = false;
+		else {
+			mqttMessagesQueue[mqttMessagesQueueIndex].nextTry = millis() + FAILED_DELAY_MS;
+			lwMQTTErr(client.lastError());
+		}
+
+		mqttMessagesQueueIndex++;
+	}
+}
+
 void sendShadowData(void) {
 	DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(6) + 100);
 
@@ -297,7 +320,7 @@ void wakeDeviceTask(void *pvParameters) {
 			vTaskDelay(pdMS_TO_TICKS(PING_BETWEEN_DELAY_MS));
 		}
 
-		addDeviceStatusQueue(device->mac, device->channel, pingResult);
+		addDeviceStatus(device->mac, device->channel, pingResult);
 	}
 
 	delete pvParameters;
@@ -317,7 +340,7 @@ void deviceStatusTask(void *pvParameters) {
 
 	Sprintf(">> %d\n", pingResult);
 
-	addDeviceStatusQueue(status->mac, status->channel, pingResult);
+	addDeviceStatus(status->mac, status->channel, pingResult);
 
 	delete pvParameters;
 	vTaskDelete(NULL);
@@ -353,55 +376,38 @@ void restartTask(void *pvParameters) {
 }
 #endif
 
-void deviceStatusQueueSend() {
-	if (deviceStatusQueueIndex == deviceStatusQueueSize)
-		deviceStatusQueueIndex = 0;
-
-	if (deviceStatusQueue[deviceStatusQueueIndex].waiting) {
-		DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(4) + 100);
-
-		JsonObject rootJSON = jsonBuffer.to<JsonObject>();
-		rootJSON["MAC"] = deviceStatusQueue[deviceStatusQueueIndex].mac;
-		rootJSON["pingResult"] = deviceStatusQueue[deviceStatusQueueIndex].status;
-
-		Sprintf("[%s] Sending: ", deviceStatusQueue[deviceStatusQueueIndex].channel.c_str());
-		Sjson(rootJSON, Serial);
-		Sprintln();
-
-		char data[measureJson(rootJSON) + 1];
-		serializeJson(rootJSON, data, sizeof(data));
-
-		bool res = client.publish((char *)deviceStatusQueue[deviceStatusQueueIndex].channel.c_str(), data);
-		if (!res)
-			lwMQTTErr(client.lastError());
-		else
-			deviceStatusQueue[deviceStatusQueueIndex].waiting = false;
-	}
-
-	deviceStatusQueueIndex++;
-}
-
-bool addDeviceStatusQueue(String mac, String channel, bool status) {
+void addDeviceStatus(String &mac, String &topic, bool status) {
 	bool addedToQueue = false;
 
-	for (uint8_t i = 0; i < deviceStatusQueueSize; i++) {
-		if (!deviceStatusQueue[i].waiting) {
-			deviceStatusQueue[i].mac = mac;
-			deviceStatusQueue[i].channel = channel;
-			deviceStatusQueue[i].status = status;
-			deviceStatusQueue[i].waiting = true;
+	for (uint8_t i = 0; i < mqttMessagesQueueSize; i++) {
+		if (mqttMessagesQueue[i].waiting == false) {
+			DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(4) + 100);
+
+			JsonObject rootJSON = jsonBuffer.to<JsonObject>();
+			rootJSON["MAC"] = mac.c_str();
+			rootJSON["pingResult"] = status;
+
+			char data[measureJson(rootJSON) + 1];
+			serializeJson(rootJSON, data, sizeof(data));
+
+			Sjson(rootJSON, Serial);
+
+			mqttMessagesQueue[i].waiting = true;
+			mqttMessagesQueue[i].topic = topic;
+			mqttMessagesQueue[i].payload = data;
+			mqttMessagesQueue[i].nextTry = 0;
 
 			addedToQueue = true;
+
 			break;
 		}
 	}
 
 	if (!addedToQueue) {
-		vTaskDelay(pdMS_TO_TICKS(10000));
-		return addDeviceStatusQueue(mac, channel, status);
+		vTaskDelay(pdMS_TO_TICKS(FAILED_DELAY_MS));
+		addDeviceStatus(mac, topic, status);
+		Sprintln("!addedToQueue");
 	}
-
-	return addedToQueue;
 }
 
 void prepareRestart() {
@@ -478,22 +484,22 @@ uint8_t subnetCIDR(IPAddress subnetMask) {
 	uint8_t CIDR = 0;
 
 	for (uint8_t i = 0; i < 4; i++) {
-		if (subnetMask[i] == 0x80)  // 128
-			CIDR += 1; // 1 bit
+		if (subnetMask[i] == 0x80)		 // 128
+			CIDR += 1;					 // 1 bit
 		else if (subnetMask[i] == 0xC0)  // 192
-			CIDR += 2; // 2 bit
+			CIDR += 2;					 // 2 bit
 		else if (subnetMask[i] == 0xE0)  // 224
-			CIDR += 3; // 3 bit
+			CIDR += 3;					 // 3 bit
 		else if (subnetMask[i] == 0xF0)  // 242
-			CIDR += 4; // 4 bit
+			CIDR += 4;					 // 4 bit
 		else if (subnetMask[i] == 0xF8)  // 248
-			CIDR += 5; // 5 bit
+			CIDR += 5;					 // 5 bit
 		else if (subnetMask[i] == 0xFC)  // 252
-			CIDR += 6; // 6 bit
+			CIDR += 6;					 // 6 bit
 		else if (subnetMask[i] == 0xFE)  // 254
-			CIDR += 7; // 7 bit
+			CIDR += 7;					 // 7 bit
 		else if (subnetMask[i] == 0xFF)  // 255
-			CIDR += 8; // 8 bit
+			CIDR += 8;					 // 8 bit
 	}
 
 	return CIDR;

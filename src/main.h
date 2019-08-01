@@ -13,15 +13,14 @@
 #include <MQTT.h>
 
 #include <WiFi.h>
-#include <WiFiUdp.h>
 #include <WiFiClientSecure.h>
+#include <WiFiUdp.h>
 
-#include "settings.h"
 #include "Credentials.h"
+#include "settings.h"
 
-#include <WakeOnLan.h>
 #include <ESP32Ping.h>
-
+#include <WakeOnLan.h>
 
 void setupTasks();
 
@@ -34,6 +33,7 @@ void updateSystemTime();
 
 void connectToAWS();
 void messageReceived(String &topic, String &payload);
+void mqttMessageQueueProcess();
 void sendShadowData(void);
 
 void ntpTask(void *pvParameters);
@@ -43,8 +43,7 @@ void restartTask(void *pvParameters);
 void wakeDeviceTask(void *pvParameters);
 void deviceStatusTask(void *pvParameters);
 
-void deviceStatusQueueSend();
-bool addDeviceStatusQueue(String mac, String channel, bool status);
+void addDeviceStatus(String &mac, String &topic, bool status);
 
 void prepareRestart();
 
@@ -86,11 +85,13 @@ struct statusStruct {
 	String ip;
 };
 
-struct deviceStatusQueueStruct {
-	String mac;
-	String channel;
-	bool status;
+struct mqttMessageStruct {
 	bool waiting = false;
+
+	String topic;
+	String payload;
+
+	unsigned long nextTry = 0;
 };
 
 WiFiClientSecure net;
@@ -102,8 +103,8 @@ WakeOnLan WOL(UDP);
 bool timeSet = false;
 unsigned long nextShadowMillis = 0;
 
-const size_t deviceStatusQueueSize = 12;
-deviceStatusQueueStruct deviceStatusQueue[deviceStatusQueueSize];
-uint8_t deviceStatusQueueIndex = 0;
+const size_t mqttMessagesQueueSize = 12;
+uint8_t mqttMessagesQueueIndex = 0;
+mqttMessageStruct mqttMessagesQueue[mqttMessagesQueueSize];
 
 #endif
