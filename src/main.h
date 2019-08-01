@@ -13,7 +13,7 @@
 #include <MQTT.h>
 
 #include <WiFi.h>
-#include <WiFiUDP.h>
+#include <WiFiUdp.h>
 #include <WiFiClientSecure.h>
 
 #include "settings.h"
