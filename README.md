@@ -1,4 +1,5 @@
-# WakeDevice [![Build Status](https://travis-ci.com/a7md0/WakeDevice.svg?branch=master)](https://travis-ci.com/a7md0/WakeDevice)
+# WakeDevice [![Build Status](https://travis-ci.com/a7md0/WakeDevice.svg?branch=master)](https://travis-ci.com/a7md0/WakeDevice) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/a7md0/WakeDevice/blob/master/LICENSE)
+
 Wake device which receive messages encoded in JSON via MQTT, and generate Wake-On-LAN packets bases on the received MAC Address from the message. Second approch is to check device status which send ICMP ping to device static IP and send message with the ping status.<br /><br />
 This is intermediate device to acheive Wake-On-WAN without port forwarding. Moreover, This is solution for devices in networks behind firewall, [NAT](https://en.wikipedia.org/wiki/Network_address_translation) and/or [carrier-grade NAT](https://en.wikipedia.org/wiki/Carrier-grade_NAT). In most cases, ISPs does not provide public IP for home users.
 
