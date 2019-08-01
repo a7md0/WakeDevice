@@ -72,21 +72,21 @@ extern void ledBlinkDuration(float onTime = 1, float offTime = 1);
 #endif
 #endif
 
-struct deviceStruct {
+struct wakeMessageStruct {
 	String mac;
 	uint16_t port = 9;
 
 	bool retrieveStatus = false;
-	String channel;
+	String topic;
 	String ip;
 
 	bool secureOn = false;
 	String secureOnPassword;
 };
 
-struct statusStruct {
+struct statusMessageStruct {
 	String mac;
-	String channel;
+	String topic;
 	String ip;
 };
 
@@ -125,10 +125,12 @@ const size_t mqttMessagesQueueSize = 12;
 uint8_t mqttMessagesQueueIndex = 0;
 mqttMessageStruct mqttMessagesQueue[mqttMessagesQueueSize];
 
+SemaphoreHandle_t mqttQueueSemaphore = NULL;
+
 const size_t icmpQueueSize = 24;
 icmpQueueStruct icmpQueue[icmpQueueSize];
 
 TaskHandle_t icmpTaskHandler = NULL;
-
+SemaphoreHandle_t icmpQueueSemaphore = NULL;
 
 #endif
