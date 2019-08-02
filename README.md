@@ -14,7 +14,7 @@ This is intermediate device to acheive Wake-On-WAN without port forwarding. More
     * Port 7 or 9 (required)
     * Static IP to retrieve device status via ICMP ping (optinal, supported)
     * SecureOn password (optional, supported)
-* [Wake App](#-wake-app)
+* [Wake App](#wake-app)
 
 # Wake App
 Application to add devices list and send message to wake/retrieve status. Built with Ionic 4 & Angular 8. Utilizing [AWS Amplify](https://aws-amplify.github.io/) for MQTT messaging.<br />
