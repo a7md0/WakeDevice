@@ -120,17 +120,16 @@ void wifiAcquiredIP(system_event_id_t event) {
 #ifdef PRINT_TO_SERIAL
 	IPAddress localIP = WiFi.localIP();
 	IPAddress subnetMask = WiFi.subnetMask();
-	IPAddress gatewayIP = WiFi.gatewayIP();
-	IPAddress broadcastIP = WOL.calculateBroadcastAddress(localIP, subnetMask);
 
-	Sprint("IP: " + localIP.toString());
-	Sprint(" | Subnet: " + subnetMask.toString());
-	Sprint(" | Gateway: " + gatewayIP.toString());
-	Sprintln(" | Broadcast: " + broadcastIP.toString());
-#else
-	WOL.calculateBroadcastAddress(WiFi.localIP(), WiFi.subnetMask());
+	IPAddress networkID = getNetworkID(localIP, subnetMask);
+	uint8_t cidr = subnetCIDR(subnetMask);
+
+	Sprint("Network: " + networkID.toString());
+	Sprint("/" + cidr);
+	Sprintln(" | IPv4: " + localIP.toString());
 #endif
 
+	WOL.calculateBroadcastAddress(WiFi.localIP(), WiFi.subnetMask());
 	updateSystemTime();
 }
 
