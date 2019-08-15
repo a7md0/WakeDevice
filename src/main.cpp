@@ -51,9 +51,6 @@ void loop() {
 		if (client.connected()) {
 			client.loop();
 
-			if (millis() >= nextShadowMillis)
-				sendShadowData();
-
 			mqttMessageQueueProcess();
 		} else {
 #ifdef ENABLE_LED
@@ -284,34 +281,6 @@ void mqttMessageQueueProcess() {
 	}
 
 	xSemaphoreGive(mqttQueueSemaphore);
-}
-
-void sendShadowData(void) {
-	DynamicJsonDocument jsonBuffer(JSON_OBJECT_SIZE(6) + 100);
-
-	JsonObject root = jsonBuffer.to<JsonObject>();
-	JsonObject state = root.createNestedObject("state");
-	JsonObject state_reported = state.createNestedObject("reported");
-
-	IPAddress localIP = WiFi.localIP();
-	IPAddress subnetMask = WiFi.subnetMask();
-
-	state_reported["network_id"] = String(getNetworkID(localIP, subnetMask).toString() + "/" + subnetCIDR(subnetMask));
-	state_reported["free_memory"] = esp_get_free_heap_size();
-	state_reported["up_time"] = millis() / 1000;
-
-	Sprintf("[%s] Sending: ", MQTT_PUB_SHADOW);
-	Sjson(root, Serial);
-	Sprintln();
-
-	char shadow[measureJson(root) + 1];
-	serializeJson(root, shadow, sizeof(shadow));
-
-	if (!client.publish(MQTT_PUB_SHADOW, shadow, sizeof(shadow))) {
-		lwMQTTErr(client.lastError());
-		nextShadowMillis = millis() + 10000;
-	} else
-		nextShadowMillis = millis() + UPDATE_FREQUENT;
 }
 
 void wakeDeviceTask(void *pvParameters) {

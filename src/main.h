@@ -137,7 +137,6 @@ WiFiUDP UDP;
 WakeOnLan WOL(UDP);
 
 bool timeSet = false;
-unsigned long nextShadowMillis = 0;
 
 const size_t mqttMessagesQueueSize = 12;
 uint8_t mqttMessagesQueueIndex = 0;
