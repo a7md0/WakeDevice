@@ -32,8 +32,6 @@ iOS: Not available at the moment
 [ESP32Ping](https://github.com/marian-craciunescu/ESP32Ping) by [Marian Craciunescu](https://github.com/marian-craciunescu)<br />
 
 # License
-GNU General Public License v3.0 (GPL-3.0)
-<br />------------------------------------------------<br />
 Wake Device
 Copyright (C) 2019 Ahmed Al-Qaidom
 
